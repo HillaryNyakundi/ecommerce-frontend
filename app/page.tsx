@@ -1,7 +1,6 @@
+import { redirect } from 'next/navigation';
+
 export default function Home() {
-  return (
-    <div className="text-violet-500">
-      <p>Hey! Welcome to my kernel</p>
-    </div>
-  );
+  // Redirect root to products page
+  redirect('/products');
 }

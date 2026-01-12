@@ -1,18 +1,69 @@
 'use client';
 
-import { useSession, signIn, signOut } from 'next-auth/react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { authApi } from '@/lib/api';
+import type { SignUpInput, SignInInput } from '@/types/api';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
-export function useAuth() {
-  const { data: session, status, update } = useSession();
+/**
+ * Sign up mutation
+ */
+export const useSignUp = () => {
+  const router = useRouter();
+  const queryClient = useQueryClient();
 
-  return {
-    user: session?.user,
-    isAuthenticated: !!session,
-    isLoading: status === 'loading',
-    accessToken: session?.accessToken,
-    refreshToken: session?.refreshToken,
-    signIn,
-    signOut,
-    update,
-  };
-}
+  return useMutation({
+    mutationFn: (input: SignUpInput) => authApi.signUp(input),
+    onSuccess: () => {
+      queryClient.clear();
+      toast.success('Account created successfully! Please sign in.');
+      router.push('/auth/signin');
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.detail || error.message || 'Sign up failed';
+      toast.error(message);
+    },
+  });
+};
+
+/**
+ * Sign in mutation
+ */
+export const useSignIn = () => {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: SignInInput) => authApi.signIn(input),
+    onSuccess: () => {
+      queryClient.clear();
+      toast.success('Signed in successfully!');
+      router.push('/products');
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.detail || error.message || 'Sign in failed';
+      toast.error(message);
+    },
+  });
+};
+
+/**
+ * Sign out mutation
+ */
+export const useSignOut = () => {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => {
+      authApi.signOut();
+      return Promise.resolve();
+    },
+    onSuccess: () => {
+      queryClient.clear();
+      toast.success('Signed out successfully');
+      router.push('/');
+    },
+  });
+};

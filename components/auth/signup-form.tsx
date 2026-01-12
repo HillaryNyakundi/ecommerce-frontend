@@ -1,25 +1,20 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { signUpSchema, SignUpFormData } from '@/lib/validations/auth';
-import { signUpAction } from '@/lib/actions/auth-actions';
+import { useSignUp } from '@/hooks/use-auth';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import type { SignUpInput } from '@/types/api';
 
 export default function SignUpForm() {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [serverError, setServerError] = useState('');
+  const signUp = useSignUp();
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-    watch,
-    setFocus,
-  } = useForm<SignUpFormData>({
-    resolver: zodResolver(signUpSchema),
+  } = useForm<SignUpInput & { confirmPassword: string }>({
     defaultValues: {
       username: '',
       email: '',
@@ -29,167 +24,112 @@ export default function SignUpForm() {
     },
   });
 
-  const password = watch('password');
-
-  const onSubmit = (data: SignUpFormData) => {
-    setServerError('');
-
-    startTransition(async () => {
-      const { confirmPassword, ...signUpData } = data;
-      const result = await signUpAction(signUpData);
-      
-      if (result.success) {
-        router.push('/dashboard');
-        router.refresh();
-      } else {
-        setServerError(result.error || 'Sign up failed');
-        setFocus('username');
-      }
-    });
+  const onSubmit = (data: SignUpInput & { confirmPassword: string }) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { confirmPassword, ...signUpData } = data;
+    signUp.mutate(signUpData);
   };
 
   return (
-    <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
-      {serverError && (
-        <div className="rounded-md bg-red-50 p-4">
-          <div className="text-sm text-red-800">{serverError}</div>
-        </div>
-      )}
-      
+    <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
       <div className="space-y-4">
-        <div>
-          <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-            Username
-          </label>
-          <input
-            {...register('username')}
-            id="username"
-            type="text"
-            disabled={isPending}
-            className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
-              errors.username ? 'border-red-500' : 'border-gray-300'
-            } placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm disabled:opacity-50`}
-            placeholder="Choose a username"
-          />
-          {errors.username && (
-            <p className="mt-1 text-sm text-red-600">{errors.username.message}</p>
-          )}
-        </div>
-        
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-            Email
-          </label>
-          <input
-            {...register('email')}
-            id="email"
-            type="email"
-            disabled={isPending}
-            className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
-              errors.email ? 'border-red-500' : 'border-gray-300'
-            } placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm disabled:opacity-50`}
-            placeholder="you@example.com"
-          />
-          {errors.email && (
-            <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-          )}
-        </div>
-        
-        <div>
-          <label htmlFor="full_name" className="block text-sm font-medium text-gray-700">
-            Full Name
-          </label>
-          <input
-            {...register('full_name')}
+        <div className="space-y-2">
+          <Label htmlFor="full_name">Full Name</Label>
+          <Input
+            {...register('full_name', {
+              required: 'Full name is required',
+            })}
             id="full_name"
             type="text"
-            disabled={isPending}
-            className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
-              errors.full_name ? 'border-red-500' : 'border-gray-300'
-            } placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm disabled:opacity-50`}
             placeholder="John Doe"
+            disabled={signUp.isPending}
           />
           {errors.full_name && (
-            <p className="mt-1 text-sm text-red-600">{errors.full_name.message}</p>
+            <p className="text-sm text-destructive">{errors.full_name.message}</p>
           )}
         </div>
-        
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-            Password
-          </label>
-          <input
-            {...register('password')}
+
+        <div className="space-y-2">
+          <Label htmlFor="username">Username</Label>
+          <Input
+            {...register('username', {
+              required: 'Username is required',
+            })}
+            id="username"
+            type="text"
+            placeholder="johndoe"
+            disabled={signUp.isPending}
+          />
+          {errors.username && (
+            <p className="text-sm text-destructive">{errors.username.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            {...register('email', {
+              required: 'Email is required',
+              pattern: {
+                value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                message: 'Invalid email address',
+              },
+            })}
+            id="email"
+            type="email"
+            placeholder="you@example.com"
+            disabled={signUp.isPending}
+          />
+          {errors.email && (
+            <p className="text-sm text-destructive">{errors.email.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <Input
+            {...register('password', {
+              required: 'Password is required',
+              minLength: {
+                value: 6,
+                message: 'Password must be at least 6 characters',
+              },
+            })}
             id="password"
             type="password"
-            disabled={isPending}
-            className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
-              errors.password ? 'border-red-500' : 'border-gray-300'
-            } placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm disabled:opacity-50`}
-            placeholder="Min 6 characters with uppercase, lowercase, and number"
+            placeholder="At least 6 characters"
+            disabled={signUp.isPending}
           />
           {errors.password && (
-            <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
-          )}
-          {password && password.length >= 6 && !errors.password && (
-            <p className="mt-1 text-sm text-green-600">✓ Strong password</p>
+            <p className="text-sm text-destructive">{errors.password.message}</p>
           )}
         </div>
-        
-        <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-            Confirm Password
-          </label>
-          <input
-            {...register('confirmPassword')}
+
+        <div className="space-y-2">
+          <Label htmlFor="confirmPassword">Confirm Password</Label>
+          <Input
+            {...register('confirmPassword', {
+              required: 'Please confirm your password',
+            })}
             id="confirmPassword"
             type="password"
-            disabled={isPending}
-            className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
-              errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
-            } placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm disabled:opacity-50`}
             placeholder="Re-enter your password"
+            disabled={signUp.isPending}
           />
           {errors.confirmPassword && (
-            <p className="mt-1 text-sm text-red-600">{errors.confirmPassword.message}</p>
+            <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
           )}
-        </div>
-
-        <div className="flex items-start">
-          <input
-            id="terms"
-            type="checkbox"
-            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-            required
-          />
-          <label htmlFor="terms" className="ml-2 block text-sm text-gray-900">
-            I agree to the{' '}
-            <a href="#" className="text-indigo-600 hover:text-indigo-500">
-              Terms and Conditions
-            </a>
-          </label>
         </div>
       </div>
 
-      <div>
-        <button
-          type="submit"
-          disabled={isPending}
-          className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-        >
-          {isPending ? (
-            <span className="flex items-center">
-              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Creating account...
-            </span>
-          ) : (
-            'Create account'
-          )}
-        </button>
-      </div>
+      <Button
+        type="submit"
+        className="w-full"
+        size="lg"
+        disabled={signUp.isPending}
+      >
+        {signUp.isPending ? 'Creating account...' : 'Create account'}
+      </Button>
     </form>
   );
 }
